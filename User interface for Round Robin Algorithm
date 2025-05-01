@@ -1,0 +1,160 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+
+class Processes {
+    int pid, arrivalTime, burstTime, remainingTime, waitingTime, turnaroundTime;
+
+    public Processes(int pid, int arrivalTime, int burstTime) {
+        this.pid = pid;
+        this.arrivalTime = arrivalTime;
+        this.burstTime = burstTime;
+        this.remainingTime = burstTime;
+        this.waitingTime = 0;
+        this.turnaroundTime = 0;
+    }
+}
+
+public class RoundRobinGUI extends JFrame {
+    private JTextField numField, quantumField;
+    private JTextArea resultArea;
+    private JPanel inputPanel;
+    private java.util.List<JTextField[]> processFields = new ArrayList<>();
+
+    public RoundRobinGUI() {
+        setTitle("Round Robin Scheduling");
+        setSize(700, 600);
+        setLayout(new BorderLayout());
+
+        inputPanel = new JPanel(new GridLayout(0, 3, 10, 10));
+
+        JPanel topPanel = new JPanel(new FlowLayout());
+        topPanel.add(new JLabel("Number of Processes:"));
+        numField = new JTextField(5);
+        topPanel.add(numField);
+        JButton generateBtn = new JButton("Generate Fields");
+        topPanel.add(generateBtn);
+
+        topPanel.add(new JLabel("Time Quantum:"));
+        quantumField = new JTextField(5);
+        topPanel.add(quantumField);
+
+        JButton runBtn = new JButton("Run Scheduling");
+        topPanel.add(runBtn);
+
+        add(topPanel, BorderLayout.NORTH);
+        add(new JScrollPane(inputPanel), BorderLayout.CENTER);
+
+        resultArea = new JTextArea(10, 50);
+        resultArea.setEditable(false);
+        add(new JScrollPane(resultArea), BorderLayout.SOUTH);
+
+        generateBtn.addActionListener(e -> generateInputFields());
+        runBtn.addActionListener(e -> runScheduling());
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+
+    private void generateInputFields() {
+        inputPanel.removeAll();
+        processFields.clear();
+
+        int n = Integer.parseInt(numField.getText());
+
+        inputPanel.add(new JLabel("Process ID"));
+        inputPanel.add(new JLabel("Arrival Time"));
+        inputPanel.add(new JLabel("Burst Time"));
+
+        for (int i = 0; i < n; i++) {
+            JTextField pidField = new JTextField("P" + (i + 1));
+            pidField.setEditable(false);
+            JTextField atField = new JTextField();
+            JTextField btField = new JTextField();
+
+            inputPanel.add(pidField);
+            inputPanel.add(atField);
+            inputPanel.add(btField);
+
+            processFields.add(new JTextField[]{atField, btField});
+        }
+
+        revalidate();
+        repaint();
+    }
+
+    private void runScheduling() {
+        int n = processFields.size();
+        int quantum = Integer.parseInt(quantumField.getText());
+
+        Processes[] processes = new Processes[n];
+
+        for (int i = 0; i < n; i++) {
+            int arrival = Integer.parseInt(processFields.get(i)[0].getText());
+            int burst = Integer.parseInt(processFields.get(i)[1].getText());
+            processes[i] = new Processes(i + 1, arrival, burst);
+        }
+
+        Queue<Processes> queue = new LinkedList<>();
+        int currentTime = 0, completed = 0;
+        boolean[] visited = new boolean[n];
+
+        while (completed < n) {
+            for (int i = 0; i < n; i++) {
+                if (!visited[i] && processes[i].arrivalTime <= currentTime) {
+                    queue.add(processes[i]);
+                    visited[i] = true;
+                }
+            }
+
+            if (queue.isEmpty()) {
+                currentTime++;
+                continue;
+            }
+
+            Processes currentProcess = queue.poll();
+            int executeTime = Math.min(quantum, currentProcess.remainingTime);
+            currentProcess.remainingTime -= executeTime;
+            currentTime += executeTime;
+
+            for (int i = 0; i < n; i++) {
+                if (!visited[i] && processes[i].arrivalTime <= currentTime) {
+                    queue.add(processes[i]);
+                    visited[i] = true;
+                }
+            }
+
+            if (currentProcess.remainingTime == 0) {
+                completed++;
+                currentProcess.turnaroundTime = currentTime - currentProcess.arrivalTime;
+                currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
+            } else {
+                queue.add(currentProcess);
+            }
+        }
+
+        // Output
+        StringBuilder output = new StringBuilder();
+        double totalWT = 0, totalTAT = 0;
+
+        output.append("PID\tAT\tBT\tWT\tTAT\n");
+        for (Processes p : processes) {
+            output.append(p.pid).append("\t").append(p.arrivalTime).append("\t")
+                    .append(p.burstTime).append("\t").append(p.waitingTime).append("\t")
+                    .append(p.turnaroundTime).append("\n");
+
+            totalWT += p.waitingTime;
+            totalTAT += p.turnaroundTime;
+        }
+
+        output.append("\nAverage Waiting Time: ").append(String.format("%.2f", totalWT / n));
+        output.append("\nAverage Turnaround Time: ").append(String.format("%.2f", totalTAT / n));
+
+        resultArea.setText(output.toString());
+    }
+
+    public static void main(String[] args) {
+        new RoundRobinGUI();
+    }
+}
