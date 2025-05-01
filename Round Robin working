@@ -1,0 +1,88 @@
+import java.util.Scanner;
+import java.util.LinkedList;
+import java.util.Queue;
+
+class Processes{
+    int pid, arrivalTime, burstTime, remainingTime, waitingTime, turnaroundTime;
+
+    public Processes(int pid, int arrivalTime, int burstTime) {
+        this.pid = pid;
+        this.arrivalTime = arrivalTime;
+        this.burstTime = burstTime;
+        this.remainingTime = burstTime;
+        this.waitingTime = 0;
+        this.turnaroundTime = 0;
+    }
+}
+
+public class RoundRobin_Scheduling {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        System.out.print("Enter number of processes: ");
+        int n = sc.nextInt();
+        Processes[] processes = new Processes[n];
+
+        System.out.print("Enter Time Quantum: ");
+        int timeQuantum = sc.nextInt();
+
+        // Taking input for processes
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter Arrival Time for Process " + (i + 1) + ": ");
+            int arrivalTime = sc.nextInt();
+            System.out.print("Enter Burst Time for Process " + (i + 1) + ": ");
+            int burstTime = sc.nextInt();
+            processes[i] = new Processes(i + 1, arrivalTime, burstTime);
+        }
+
+        // Implementing Round Robin Scheduling
+        Queue<Processes> queue = new LinkedList<>();
+        int currentTime = 0, completed = 0;
+        boolean[] visited = new boolean[n];
+
+        while (completed < n) {
+            // Add processes to queue which have arrived
+            for (int i = 0; i < n; i++) {
+                if (!visited[i] && processes[i].arrivalTime <= currentTime) {
+                    queue.add(processes[i]);
+                    visited[i] = true;
+                }
+            }
+
+            if (queue.isEmpty()) {
+                currentTime++;
+                continue;
+            }
+
+            // Fetch first process from queue
+            Processes currentProcess = queue.poll();
+            int executeTime = Math.min(timeQuantum, currentProcess.remainingTime);
+            currentProcess.remainingTime -= executeTime;
+            currentTime += executeTime;
+
+            // If process is completed
+            if (currentProcess.remainingTime == 0) {
+                completed++;
+                currentProcess.turnaroundTime = currentTime - currentProcess.arrivalTime;
+                currentProcess.waitingTime = currentProcess.turnaroundTime - currentProcess.burstTime;
+            } else {
+                // If not completed, add it back to queue
+                queue.add(currentProcess);
+            }
+        }
+
+        // Printing results
+        System.out.println("\nProcess\tArrival Time\tBurst Time\tWaiting Time\tTurnaround Time");
+        double totalWaitingTime = 0, totalTurnaroundTime = 0;
+        for (Processes p : processes) {
+            System.out.println(p.pid + "\t" + p.arrivalTime + "\t\t" + p.burstTime + "\t\t" + p.waitingTime + "\t\t" + p.turnaroundTime);
+            totalWaitingTime += p.waitingTime;
+            totalTurnaroundTime += p.turnaroundTime;
+        }
+
+        System.out.println("\nAverage Waiting Time: " + (totalWaitingTime / n));
+        System.out.println("Average Turnaround Time: " + (totalTurnaroundTime / n));
+
+        sc.close();
+    }
+}
